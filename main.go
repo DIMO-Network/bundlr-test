@@ -1,18 +1,21 @@
 package main
 
 import (
-	"context"
+	"bytes"
 	"fmt"
+	"io"
+	"io/ioutil"
+	"log"
+	"net/http"
 
 	"github.com/DIMO-Network/shared"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/warp-contracts/syncer/src/utils/arweave"
 	"github.com/warp-contracts/syncer/src/utils/bundlr"
-	"github.com/warp-contracts/syncer/src/utils/config"
 )
 
 func main() {
-	ctx := context.Background()
+	// ctx := context.Background()
 	settings, err := shared.LoadConfig[struct {
 		PrivateKey string `yaml:"PRIVATE_KEY"`
 	}]("settings.yaml")
@@ -23,22 +26,47 @@ func main() {
 	signer, err := bundlr.NewEthereumSigner("0x" + settings.PrivateKey)
 	fmt.Println(crypto.PubkeyToAddress(signer.PrivateKey.PublicKey))
 
-	client := bundlr.NewClient(ctx, &config.Bundlr{
-		Urls: []string{
-			"https://devnet.bundlr.network",
-		},
-		Wallet: crypto.PubkeyToAddress(signer.PrivateKey.PublicKey).String(),
-	})
+	// client := bundlr.NewClient(ctx, &config.Bundlr{
+	// 	Urls: []string{
+	// 		"https://devnet.bundlr.network",
+	// 	},
+	// 	Wallet: crypto.PubkeyToAddress(signer.PrivateKey.PublicKey).String(),
+	// })
 
 	dataItem := bundlr.BundleItem{
-		Data: arweave.Base64String([]byte("test")),
+		Data: arweave.Base64String([]byte(":)")),
+		Tags: bundlr.Tags{
+			bundlr.Tag{Name: "Content-Type", Value: "text"},
+		},
 	}
 
 	err = dataItem.Sign(signer)
-
-	resp1, resp2, err := client.Upload(ctx, &dataItem)
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println(resp1, resp2)
+
+	reader, err := dataItem.Reader()
+	if err != nil {
+		panic(err)
+	}
+
+	body, err := io.ReadAll(reader)
+	if err != nil {
+		panic(err)
+	}
+
+	responseBody := bytes.NewBuffer(body)
+
+	resp, err := http.Post("https://devnet.bundlr.network:/tx/matic", "application/octet-stream", responseBody)
+	if err != nil {
+		panic(err)
+	}
+	defer resp.Body.Close()
+
+	body, err = ioutil.ReadAll(resp.Body)
+	if err != nil {
+		panic(err)
+	}
+	sb := string(body)
+	log.Printf(sb)
 }
