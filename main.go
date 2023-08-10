@@ -2,20 +2,17 @@ package main
 
 import (
 	"bytes"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
 
 	"github.com/DIMO-Network/shared"
-	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/warp-contracts/syncer/src/utils/arweave"
 	"github.com/warp-contracts/syncer/src/utils/bundlr"
 )
 
 func main() {
-	// ctx := context.Background()
 	settings, err := shared.LoadConfig[struct {
 		PrivateKey string `yaml:"PRIVATE_KEY"`
 	}]("settings.yaml")
@@ -24,17 +21,8 @@ func main() {
 	}
 
 	signer, err := bundlr.NewEthereumSigner("0x" + settings.PrivateKey)
-	fmt.Println(crypto.PubkeyToAddress(signer.PrivateKey.PublicKey))
-
-	// client := bundlr.NewClient(ctx, &config.Bundlr{
-	// 	Urls: []string{
-	// 		"https://devnet.bundlr.network",
-	// 	},
-	// 	Wallet: crypto.PubkeyToAddress(signer.PrivateKey.PublicKey).String(),
-	// })
-
 	dataItem := bundlr.BundleItem{
-		Data: arweave.Base64String([]byte(":)")),
+		Data: arweave.Base64String([]byte("abc")),
 		Tags: bundlr.Tags{
 			bundlr.Tag{Name: "Content-Type", Value: "text"},
 		},
@@ -57,7 +45,7 @@ func main() {
 
 	responseBody := bytes.NewBuffer(body)
 
-	resp, err := http.Post("https://devnet.bundlr.network:/tx/matic", "application/octet-stream", responseBody)
+	resp, err := http.Post("https://devnet.bundlr.network/tx/matic", "application/octet-stream", responseBody)
 	if err != nil {
 		panic(err)
 	}
